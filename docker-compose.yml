@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: frontend-service
+    ports:
+      - "3000:80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://localhost:3001
+    networks:
+      - ecommerce-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    labels:
+      - "service.name=frontend"
+      - "service.version=1.0.0"
+
+networks:
+  ecommerce-network:
+    driver: bridge
+    name: ecommerce-network
