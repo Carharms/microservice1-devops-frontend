@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import App from './apppp';
+import App from './app';
 
 // Mock fetch
 global.fetch = jest.fn();
