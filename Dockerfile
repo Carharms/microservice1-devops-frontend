@@ -16,6 +16,17 @@ COPY . .
 # Build the app
 RUN npm run build
 
+COPY . .
+# Debug: Check what files were copied
+RUN echo "=== Files in /app ===" && ls -la
+RUN echo "=== Files in src/ ===" && ls -la src/
+RUN echo "=== Checking App.js specifically ===" && \
+    (test -f src/App.js && echo "App.js exists" || echo "App.js missing") && \
+    (test -f src/app.js && echo "app.js exists" || echo "app.js missing")
+RUN echo "=== Contents of index.js ===" && cat src/index.js
+# Build the app
+RUN npm run build
+
 # Production stage
 FROM nginx:alpine
 
