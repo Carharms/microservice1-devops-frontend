@@ -6,6 +6,7 @@ WORKDIR /app
 # Copy package files first to leverage caching
 COPY package*.json ./
 
+# Test file alteration for commit
 # Install dependencies
 RUN npm ci --silent
 
