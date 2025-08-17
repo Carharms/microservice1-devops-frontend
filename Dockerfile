@@ -8,7 +8,7 @@ COPY package*.json ./
 
 # Test file alteration for commit
 # Install dependencies
-RUN npm ci --silent
+RUN npm install --silent
 
 # Copy source code after dependencies are installed
 COPY . .
