@@ -8,6 +8,11 @@ src
     App.css
     index.css
 
+ENDPOINTS FOR APIS
+(http://localhost:3001 for products, http://localhost:3002 for orders)
+
+ADD ENVIRONMENT VARIABLES FOR API ENDPOINTS AND BASIC ERROR HANDLIND??
+
 
 TO SETUP REPO
 In microservice1-devops-frontend directory
