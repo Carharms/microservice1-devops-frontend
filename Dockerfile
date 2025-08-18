@@ -1,39 +1,27 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
 # Copy package files first to leverage caching
 COPY package*.json ./
 
-# Test file alteration for commit
 # Install dependencies
 RUN npm install --silent
 
-# Copy source code after dependencies are installed
+# Copy all source code, including src/, public/, etc.
 COPY . .
 
-# Build the app
-RUN npm run build
-
-COPY . .
-# Debug: Check what files were copied
-RUN echo "=== Files in /app ===" && ls -la
-RUN echo "=== Files in src/ ===" && ls -la src/
-RUN echo "=== Checking App.js specifically ===" && \
-    (test -f src/App.js && echo "App.js exists" || echo "App.js missing") && \
-    (test -f src/app.js && echo "app.js exists" || echo "app.js missing")
-RUN echo "=== Contents of index.js ===" && cat src/index.js
 # Build the app
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Install wget for health check
+# Install wget for health check (can be combined with other RUN commands)
 RUN apk add --no-cache wget
 
-# Copy built app to nginx
+# Copy built app from the 'build' stage to nginx's serving directory
 COPY --from=build /app/build /usr/share/nginx/html
 
 # Copy nginx config
@@ -41,7 +29,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
- CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 EXPOSE 80
 
