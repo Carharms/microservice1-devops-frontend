@@ -56,11 +56,6 @@ pipeline {
                         echo "Running unit tests..."
                         npm test || echo "Unit tests completed with issues"
                         
-                        # Start database for integration tests
-                        echo "Starting database for integration tests..."
-                        docker-compose -f docker-compose.yml down --remove-orphans || true
-                        docker-compose -f docker-compose.yml up -d db
-                        
                         
                         # Run integration tests if available
                         echo "Running integration tests..."
@@ -68,11 +63,7 @@ pipeline {
                             npm run test:integration || echo "Integration tests completed with issues"
                         else
                             echo "No integration tests configured"
-                        fi
                         
-                        # Cleanup
-                        echo "Cleaning up test environment..."
-                        docker-compose -f docker-compose.yml down --remove-orphans || true
                     '''
                 }
             }
