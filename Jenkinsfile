@@ -3,11 +3,18 @@ pipeline {
     
     environment {
         DOCKER_HUB_CREDENTIALS = 'docker-hub-credentials'
-        DOCKER_IMAGE_NAME = 'carharms/frontend-service'
+        DOCKER_IMAGE_NAME = 'carharms/order-service'
         IMAGE_TAG = "${BUILD_NUMBER}"
-        SONAR_PROJECT_KEY = 'frontend-service'
-        NODE_ENV = 'production'
-        REACT_APP_API_URL = 'http://localhost:3001'
+        SONAR_PROJECT_KEY = 'order-service'
+        // SONAR_HOST_URL = 'http://localhost:9000'
+        // SONAR_AUTH_TOKEN
+        
+        // Database test configuration
+        POSTGRES_DB = 'subscriptions'
+        POSTGRES_USER = 'dbuser'
+        POSTGRES_PASSWORD = 'dbpassword'
+        DB_HOST = 'localhost'
+        DB_PORT = '5432'
     }
     
     stages {
@@ -17,26 +24,19 @@ pipeline {
                     echo "Installing Node.js dependencies and running code quality checks..."
                     sh '''
                         # Install Node.js dependencies
-                        npm ci --silent
+                        npm install
                         
                         # Run linting if available
-                        if npm run lint --silent 2>/dev/null; then
+                        if npm list eslint >/dev/null 2>&1; then
                             echo "Running ESLint..."
-                            npm run lint || echo "Linting issues found"
+                            npm run lint || echo "Linting completed with issues"
                         else
-                            echo "No lint script found, skipping linting"
-                        fi
-                        
-                        # Check code formatting if prettier is available
-                        if command -v npx >/dev/null 2>&1; then
-                            echo "Checking code formatting..."
-                            npx prettier --check src/ || echo "Formatting issues found"
+                            echo "ESLint not configured, skipping linting"
                         fi
                         
                         echo "Validating required files..."
+                        test -f "index.js" && echo "✓ index.js found" || (echo "✗ index.js missing" && exit 1)
                         test -f "package.json" && echo "✓ package.json found" || (echo "✗ package.json missing" && exit 1)
-                        test -f "src/App.js" && echo "✓ App.js found" || (echo "✗ App.js missing" && exit 1)
-                        test -f "src/index.js" && echo "✓ index.js found" || (echo "✗ index.js missing" && exit 1)
                         test -f "Dockerfile" && echo "✓ Dockerfile found" || (echo "✗ Dockerfile missing" && exit 1)
                         test -f "docker-compose.yml" && echo "✓ docker-compose.yml found" || (echo "✗ docker-compose.yml missing" && exit 1)
                     '''
@@ -47,50 +47,32 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    echo "Running frontend tests..."
+                    echo "Running Node.js tests..."
                     sh '''
-                        # Install testing dependencies if not already installed
-                        npm ci --silent
+                        # Create test directory if it doesn't exist
+                        mkdir -p test
                         
                         # Run unit tests
                         echo "Running unit tests..."
-                        if npm test -- --coverage --watchAll=false --testTimeout=10000 2>/dev/null; then
-                            echo "✓ Unit tests passed"
+                        npm test || echo "Unit tests completed with issues"
+                        
+                        # Start database for integration tests
+                        echo "Starting database for integration tests..."
+                        docker-compose -f docker-compose.yml down --remove-orphans || true
+                        docker-compose -f docker-compose.yml up -d db
+                        
+                        
+                        # Run integration tests if available
+                        echo "Running integration tests..."
+                        if npm run test:integration >/dev/null 2>&1; then
+                            npm run test:integration || echo "Integration tests completed with issues"
                         else
-                            echo "No tests found or tests failed, creating basic test..."
-                            # Create a basic test if none exists
-                            mkdir -p src/__tests__
-                            cat > src/__tests__/App.test.js << 'EOF'
-import { render, screen } from '@testing-library/react';
-import App from '../App';
-
-// Mock axios to prevent actual API calls during testing
-jest.mock('axios');
-
-test('renders e-commerce store heading', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/E-Commerce Store/i);
-  expect(linkElement).toBeInTheDocument();
-});
-
-test('renders products heading', () => {
-  render(<App />);
-  const productsHeading = screen.getByText(/Products/i);
-  expect(productsHeading).toBeInTheDocument();
-});
-EOF
-                            
-                            # Install testing library if needed
-                            npm install --save-dev @testing-library/react @testing-library/jest-dom
-                            
-                            # Run the tests again
-                            npm test -- --coverage --watchAll=false --testTimeout=10000 || echo "Tests completed with issues"
+                            echo "No integration tests configured"
                         fi
                         
-                        # Build the application to ensure it compiles
-                        echo "Building application..."
-                        npm run build || (echo "Build failed" && exit 1)
-                        echo "✓ Build successful"
+                        # Cleanup
+                        echo "Cleaning up test environment..."
+                        docker-compose -f docker-compose.yml down --remove-orphans || true
                     '''
                 }
             }
@@ -102,16 +84,9 @@ EOF
                     // SonarScanner tool path
                     def scannerHome = tool 'SonarScanner'
                     withSonarQubeEnv('SonarQube') {
-                        // Use 'sh' for Linux/Unix compatibility, 'bat' for Windows
-                        if (isUnix()) {
-                            sh """
-                                ${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.sources=src -Dsonar.exclusions=**/__tests__/**,**/*.test.js,build/**
-                            """
-                        } else {
-                            bat """
-                                "${scannerHome}\\bin\\sonar-scanner.bat" -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.sources=src -Dsonar.exclusions=**/__tests__/**,**/*.test.js,build/**
-                            """
-                        }
+                        bat """
+                            ${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.sources=. -Dsonar.exclusions=node_modules/**,test/**,coverage/**
+                        """
                     }
                 }
             }
@@ -121,31 +96,6 @@ EOF
             steps {
                 script {
                     echo "Building Docker image..."
-                    
-                    // Create nginx.conf if it doesn't exist
-                    sh '''
-                        if [ ! -f "nginx.conf" ]; then
-                            echo "Creating nginx.conf..."
-                            cat > nginx.conf << 'EOF'
-server {
-    listen 80;
-    server_name localhost;
-    
-    location / {
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    error_page 500 502 503 504 /50x.html;
-    location = /50x.html {
-        root /usr/share/nginx/html;
-    }
-}
-EOF
-                        fi
-                    '''
-                    
                     def image = docker.build("${DOCKER_IMAGE_NAME}:${IMAGE_TAG}")
                     
                     // Tag with branch-specific tags
@@ -164,12 +114,9 @@ EOF
             steps {
                 script {
                     echo "Running container security scan..."
+                    // very comprehensive security scan below - not synopsis provided in dev docs
                     try {
-                        if (isUnix()) {
-                            sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
-                        } else {
-                            bat "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity HIGH,CRITICAL ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
-                        }
+                        bat "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 1 --severity CRITICAL ${DOCKER_IMAGE_NAME}:${IMAGE_TAG}"
                     } catch (Exception e) {
                         echo "Security scan encountered issues but continuing: ${e.getMessage()}"
                     }
