@@ -35,7 +35,7 @@ pipeline {
                         fi
                         
                         echo "Validating required files..."
-                        test -f "index.js" && echo "✓ index.js found" || (echo "✗ index.js missing" && exit 1)
+                        test -f "src/index.js" && echo "✓ index.js found" || (echo "✗ index.js missing" && exit 1)
                         test -f "package.json" && echo "✓ package.json found" || (echo "✗ package.json missing" && exit 1)
                         test -f "Dockerfile" && echo "✓ Dockerfile found" || (echo "✗ Dockerfile missing" && exit 1)
                         test -f "docker-compose.yml" && echo "✓ docker-compose.yml found" || (echo "✗ docker-compose.yml missing" && exit 1)
