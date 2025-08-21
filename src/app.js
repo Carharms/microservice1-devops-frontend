@@ -8,6 +8,7 @@ function App() {
     useEffect(() => {
         // alteration for push
         // Fetch products
+        //alteration for push
         axios.get('http://localhost:3001/products')
             .then(res => setProducts(res.data))
             .catch(err => console.error(err));
