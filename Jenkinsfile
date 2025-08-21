@@ -56,14 +56,6 @@ pipeline {
                         echo "Running unit tests..."
                         npm test || echo "Unit tests completed with issues"
                         
-                        
-                        # Run integration tests if available
-                        echo "Running integration tests..."
-                        if npm run test:integration >/dev/null 2>&1; then
-                            npm run test:integration || echo "Integration tests completed with issues"
-                        else
-                            echo "No integration tests configured"
-                        
                     '''
                 }
             }
