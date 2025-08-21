@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-function App() {
+function MainApp() {
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
 
@@ -41,4 +41,4 @@ function App() {
     );
 }
 
-export default App;
+export default MainApp;
