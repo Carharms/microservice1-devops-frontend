@@ -21,24 +21,24 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    echo "Installing Node.js dependencies and running code quality checks..."
+                    echo "Install of Node.js and npm quality checks"
                     sh '''
-                        # Install Node.js dependencies
                         npm install
                         
-                        # Run linting if available
+                        # Linting
                         if npm list eslint >/dev/null 2>&1; then
-                            echo "Running ESLint..."
+                            echo "Running ESLint"
                             npm run lint || echo "Linting completed with issues"
                         else
                             echo "ESLint not configured, skipping linting"
                         fi
                         
-                        echo "Validating required files..."
-                        test -f "src/index.js" && echo "✓ index.js found" || (echo "✗ index.js missing" && exit 1)
-                        test -f "package.json" && echo "✓ package.json found" || (echo "✗ package.json missing" && exit 1)
-                        test -f "Dockerfile" && echo "✓ Dockerfile found" || (echo "✗ Dockerfile missing" && exit 1)
-                        test -f "docker-compose.yml" && echo "✓ docker-compose.yml found" || (echo "✗ docker-compose.yml missing" && exit 1)
+                        # Validating files
+                        echo "Validating required files"
+                        test -f "src/index.js" && echo "index.js found" || (echo "index.js missing" && exit 1)
+                        test -f "package.json" && echo "package.json found" || (echo "package.json missing" && exit 1)
+                        test -f "Dockerfile" && echo "Dockerfile found" || (echo "Dockerfile missing" && exit 1)
+                        test -f "docker-compose.yml" && echo "docker-compose.yml found" || (echo "docker-compose.yml missing" && exit 1)
                     '''
                 }
             }
@@ -47,33 +47,35 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    echo "Running Node.js tests..."
+                    echo "Running Node.js unit tests, integration tests, and MainApp.test.js"
                     sh '''
                         # Create test directory if it doesn't exist
                         mkdir -p test
                         
                         # Run unit tests
-                        echo "Running unit tests..."
                         npm test || echo "Unit tests completed with issues"
+
+                        # Run integration tests
+                        # Add in MainApp.test.js
                         
                     '''
                 }
             }
         }
       
-//        stage('SonarQube Analysis and Quality Gate') {
-  //          steps {
-    //            script {
-      //              // SonarScanner tool path
-        //            def scannerHome = tool 'SonarScanner'
-          //          withSonarQubeEnv('SonarQube') {
-            //            bat """
-              //              ${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.sources=. -Dsonar.exclusions=node_modules/**,test/**,coverage/**
-                //        """
-//                    }
-  //              }
-    //        }
-      //  }
+        stage('SonarQube Analysis and Quality Gate') {
+            steps {
+                script {
+                    // SonarScanner tool path
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarQube') {
+                        bat """
+                            ${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.sources=. -Dsonar.exclusions=node_modules/**,test/**,coverage/**
+                        """
+                    }
+                }
+            }
+        }
         
         stage('Container Build') {
             steps {

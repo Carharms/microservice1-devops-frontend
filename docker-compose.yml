@@ -5,8 +5,10 @@ services:
     build: 
       context: .
       dockerfile: Dockerfile
+      # tie in with Docker repo and Kubernetes
     container_name: frontend-service
     ports:
+      # tie in with Kubernetes cluster
       - "3000:80"
     environment:
       - NODE_ENV=production
@@ -23,6 +25,7 @@ services:
     labels:
       - "service.name=frontend"
       - "service.version=1.0.0"
+      - "service.version=latest"
 
 networks:
   ecommerce-network:
